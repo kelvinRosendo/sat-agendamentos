@@ -20,6 +20,7 @@ import {
 import { AG_COLLECTION } from "@/lib/agendamentoConfig";
 import { ESPACOS_COLLECTION } from "@/lib/espacoConfig";
 import { pb } from "@/lib/pocketbase";
+import { getGccTvUrl } from "@/lib/tvRotacao";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Registro = Record<string, any>;
@@ -372,6 +373,15 @@ export default function AgendamentosTvPage() {
   }, []);
 
   useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) window.location.reload();
+    }
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  useEffect(() => {
     const updateClock = () => setNow(new Date());
 
     updateClock();
@@ -393,10 +403,21 @@ export default function AgendamentosTvPage() {
   }, []);
 
   useEffect(() => {
-    if (secondsRemaining <= 0) {
-      irParaTarefasAgora();
-    }
-  }, [secondsRemaining, irParaTarefasAgora]);
+    if (secondsRemaining > 0 || hasNavigatedRef.current) return;
+
+    hasNavigatedRef.current = true;
+    setIsLeaving(true);
+    const timer = window.setTimeout(() => {
+      const gccUrl = getGccTvUrl(window.location.origin);
+      if (gccUrl) {
+        window.location.replace(gccUrl);
+      } else {
+        router.replace("/dashboard/view");
+      }
+    }, 520);
+
+    return () => window.clearTimeout(timer);
+  }, [secondsRemaining, router]);
 
   useEffect(() => {
     async function carregarAgendamentos() {
